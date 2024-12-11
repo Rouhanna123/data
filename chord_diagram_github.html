@@ -1,0 +1,103 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chord Diagram Visualization</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-chord/3.0.1/d3-chord.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-shape/3.1.0/d3-shape.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-scale-chromatic/1.5.0/d3-scale-chromatic.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f9f9f9;
+        }
+        svg {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="chart"></div>
+
+    <script>
+        // JSON data embedded directly into the HTML
+        const jsonData = [
+            {"source": "cosmos", "target": "osmosis", "value": 40024},
+            {"source": "osmosis", "target": "cosmos", "value": 38504},
+            {"source": "osmosis", "target": "noble", "value": 24320},
+            {"source": "osmosis", "target": "celestia", "value": 23104},
+            {"source": "neutron", "target": "celestia", "value": 22606},
+            {"source": "celestia", "target": "osmosis", "value": 21554},
+            {"source": "celestia", "target": "neutron", "value": 21148},
+            {"source": "osmosis", "target": "axelar", "value": 13888},
+            {"source": "osmosis", "target": "injective", "value": 12984},
+            {"source": "axelar", "target": "osmosis", "value": 12984}
+        ];
+
+        // Prepare a unique list of nodes
+        const nodes = Array.from(new Set(jsonData.flatMap(d => [d.source, d.target])));
+
+        // Create an index map for nodes
+        const nodeIndex = new Map(nodes.map((node, i) => [node, i]));
+
+        // Create a matrix based on the JSON data
+        const matrix = Array.from({ length: nodes.length }, () => Array(nodes.length).fill(0));
+        jsonData.forEach(d => {
+            matrix[nodeIndex.get(d.source)][nodeIndex.get(d.target)] = d.value;
+        });
+
+        const width = 800;
+        const height = 800;
+        const outerRadius = Math.min(width, height) * 0.5 - 40;
+        const innerRadius = outerRadius - 20;
+
+        const colors = d3.schemeCategory10;
+
+        const chord = d3.chord().padAngle(0.05).sortSubgroups(d3.descending);
+        const arc = d3.arc().innerRadius(innerRadius).outerRadius(outerRadius);
+        const ribbon = d3.ribbon().radius(innerRadius);
+
+        const svg = d3.select("#chart")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .append("g")
+            .attr("transform", `translate(${width / 2}, ${height / 2})`);
+
+        const chords = chord(matrix);
+
+        // Draw arcs
+        svg.append("g")
+            .selectAll("path")
+            .data(chords.groups)
+            .enter()
+            .append("path")
+            .attr("fill", d => colors[d.index % colors.length])
+            .attr("stroke", d => d3.rgb(colors[d.index % colors.length]).darker())
+            .attr("d", arc)
+            .append("title")
+            .text(d => `${nodes[d.index]}: ${d.value}`);
+
+        // Draw ribbons
+        svg.append("g")
+            .selectAll("path")
+            .data(chords)
+            .enter()
+            .append("path")
+            .attr("fill", d => colors[d.target.index % colors.length])
+            .attr("stroke", d => d3.rgb(colors[d.target.index % colors.length]).darker())
+            .attr("d", ribbon)
+            .append("title")
+            .text(d => `${nodes[d.source.index]} → ${nodes[d.target.index]}: ${d.source.value}
+${nodes[d.target.index]} → ${nodes[d.source.index]}: ${d.target.value}`);
+    </script>
+</body>
+</html>
